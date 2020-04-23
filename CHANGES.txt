@@ -6,3 +6,7 @@ v0.1.3, 2020-04-15 -- Add helper function for post requests.
                       Add basic auth for passworded connections.
                       Improve websocket handler.
                       Force number to int and bool to string for aiohttp params.
+v0.1.4, 2020-04-23 -- Add test_connection function
+                      Remove ForkedDaapdData class
+                      Remove redundant get functions
+                      Change some websocket handler log messages from error to warning

@@ -1,7 +1,9 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 import asyncio
+import concurrent
 import logging
+
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -11,6 +13,7 @@ class ForkedDaapdAPI:
     """Class for interfacing with forked-daapd API."""
 
     def __init__(self, websession, ip_address, api_port, api_password):
+        """Initialize the ForkedDaapdAPI object."""
         self._ip_address = ip_address
         self._api_port = api_port
         self._websession = websession
@@ -19,6 +22,42 @@ class ForkedDaapdAPI:
             if api_password
             else None
         )
+
+    @staticmethod
+    async def test_connection(websession, host, port, password):
+        """Validate the user input."""
+        try:
+            url = f"http://{host}:{port}/api/config"
+            auth = (
+                aiohttp.BasicAuth(login="admin", password=password)
+                if password
+                else None
+            )
+            # _LOGGER.debug("Trying to connect to %s with auth %s", url, auth)
+            async with websession.get(
+                url=url, auth=auth, timeout=aiohttp.ClientTimeout(total=5)
+            ) as resp:
+                json = await resp.json()
+                # _LOGGER.debug("JSON %s", json)
+                if json["websocket_port"] == 0:
+                    return "websocket_not_enabled"
+                return "ok"
+        except (
+            aiohttp.ClientConnectionError,
+            asyncio.TimeoutError,
+            # pylint: disable=protected-access
+            concurrent.futures._base.TimeoutError,
+            # maybe related to https://github.com/aio-libs/aiohttp/issues/1207
+            aiohttp.InvalidURL,
+        ):
+            return "wrong_host_or_port"
+        except (aiohttp.ClientResponseError, KeyError):
+            if resp.status == 401:
+                return "wrong_password"
+            return "wrong_server_type"
+        finally:
+            pass
+        return "unknown_error"
 
     async def get_request(self, endpoint) -> dict:
         """Helper function to get endpoint."""
@@ -69,12 +108,12 @@ class ForkedDaapdAPI:
                         await update_callback(updates)
                         _LOGGER.debug("Done with callbacks %s", updates)
             except (asyncio.TimeoutError, aiohttp.ClientError) as exception:
-                _LOGGER.error(
+                _LOGGER.warning(
                     "Can not connect to WebSocket at %s, will retry in %s seconds.",
                     url,
                     websocket_reconnect_time,
                 )
-                _LOGGER.error("Error %s", repr(exception))
+                _LOGGER.warning("Error %s", repr(exception))
                 await asyncio.sleep(websocket_reconnect_time)
                 continue
 
@@ -220,14 +259,6 @@ class ForkedDaapdAPI:
             _LOGGER.debug("%s: Unable to add items to queue.", status)
         return status
 
-    async def get_player_status(self) -> dict:
-        """Get player status."""
-        return await self.get_request(endpoint=f"player")
-
-    async def get_queue(self) -> dict:
-        """Get queue."""
-        return await self.get_request(endpoint=f"queue")
-
     async def clear_queue(self) -> int:
         """Clear queue."""
         status = await self.put_request(endpoint=f"queue/clear")
@@ -262,82 +293,3 @@ class ForkedDaapdAPI:
         if status != 204:
             _LOGGER.debug("Unable to toggle playback.")
         return status
-
-
-class ForkedDaapdData:
-    """Represent a forked-daapd server."""
-
-    def __init__(self):
-        """Initialize the ForkedDaapd class."""
-        self._player_status = None
-        self._server_config = None
-        self._outputs = []
-        self._queue = None
-        self._last_outputs = None
-        self._last_updated = None
-        self._track_info = None
-
-    @property
-    def name(self):
-        """Name."""
-        return "forked-daapd"
-
-    @property
-    def player_status(self):
-        """Player status getter."""
-        return self._player_status
-
-    @player_status.setter
-    def player_status(self, value):
-        """Player status setter."""
-        self._player_status = value
-
-    @property
-    def server_config(self):
-        """Server config getter."""
-        return self._server_config
-
-    @server_config.setter
-    def server_config(self, value):
-        """Server config setter."""
-        self._server_config = value
-
-    @property
-    def outputs(self):
-        """Outputs getter."""
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, value):
-        """Outputs setter."""
-        self._outputs = value
-
-    @property
-    def queue(self):
-        """Queue getter."""
-        return self._queue
-
-    @queue.setter
-    def queue(self, value):
-        """Queue setter."""
-        self._queue = value
-
-    @property
-    def last_outputs(self):
-        """Last outputs getter."""
-        return self._last_outputs
-
-    @last_outputs.setter
-    def last_outputs(self, value):
-        """Last outputs setter."""
-        self._last_outputs = value
-
-    @property
-    def track_info(self):
-        """Track info getter."""
-        return self._track_info
-
-    @track_info.setter
-    def track_info(self, value):
-        """Track info setter."""
-        self._track_info = value

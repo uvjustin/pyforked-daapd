@@ -1,10 +1,16 @@
+"""setup.py for forked-daapd package."""
+
 from __future__ import print_function
+
 import io
+
 from setuptools import setup
+
 import pyforked_daapd
 
 
 def read(*filenames, **kwargs):
+    """Read helper."""
     encoding = kwargs.get("encoding", "utf-8")
     sep = kwargs.get("sep", "\n")
     buf = []
@@ -21,7 +27,7 @@ setup(
     version=pyforked_daapd.__version__,
     url="http://github.com/uvjustin/pyforked-daapd/",
     author="Justin Wong",
-    install_requires=['aiohttp'],
+    install_requires=["aiohttp"],
     author_email="46082645+uvjustin@users.noreply.github.com",
     description="Python Interface for forked-daapd",
     long_description=LONG_DESCRIPTION,
