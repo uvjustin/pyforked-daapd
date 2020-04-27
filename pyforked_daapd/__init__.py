@@ -1,5 +1,5 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 import asyncio
 import concurrent
 import logging
@@ -22,6 +22,7 @@ class ForkedDaapdAPI:
             if api_password
             else None
         )
+        self._api_password = api_password
 
     @staticmethod
     async def test_connection(websession, host, port, password):
@@ -60,7 +61,7 @@ class ForkedDaapdAPI:
         return "unknown_error"
 
     async def get_request(self, endpoint) -> dict:
-        """Helper function to get endpoint."""
+        """Get request from endpoint."""
         url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
         try:
             async with self._websession.get(url=url, auth=self._auth) as resp:
@@ -71,7 +72,7 @@ class ForkedDaapdAPI:
         return json
 
     async def put_request(self, endpoint, params=None, json=None) -> int:
-        """Helper function to put to endpoint."""
+        """Put request to endpoint."""
         url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
         _LOGGER.debug(
             "PUT request to %s with params %s, json payload %s.", url, params, json
@@ -82,7 +83,12 @@ class ForkedDaapdAPI:
         return response.status
 
     async def start_websocket_handler(
-        self, ws_port, event_types, update_callback, websocket_reconnect_time,
+        self,
+        ws_port,
+        event_types,
+        update_callback,
+        websocket_reconnect_time,
+        disconnected_callback=None,
     ) -> None:
         """Websocket handler daemon."""
         _LOGGER.debug("Starting websocket handler")
@@ -114,6 +120,8 @@ class ForkedDaapdAPI:
                     websocket_reconnect_time,
                 )
                 _LOGGER.warning("Error %s", repr(exception))
+                if disconnected_callback:
+                    disconnected_callback()
                 await asyncio.sleep(websocket_reconnect_time)
                 continue
 
@@ -221,7 +229,7 @@ class ForkedDaapdAPI:
         return status
 
     async def post_request(self, endpoint, params=None, json=None) -> int:
-        """Helper function to put to endpoint."""
+        """Post request to endpoint."""
         url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
         _LOGGER.debug(
             "POST request to %s with params %s, data payload %s.", url, params, json
@@ -265,6 +273,11 @@ class ForkedDaapdAPI:
         if status != 204:
             _LOGGER.debug("%s: Unable to clear queue.", status)
         return status
+
+    def full_url(self, url):
+        """Get full url (including basic auth) of urls such as artwork_url."""
+        creds = f"admin:{self._api_password}@" if self._api_password else ""
+        return f"http://{creds}{self._ip_address}:{self._api_port}{url}"
 
     # not used by HA
 

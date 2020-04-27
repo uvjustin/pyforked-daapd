@@ -10,3 +10,5 @@ v0.1.4, 2020-04-23 -- Add test_connection function
                       Remove ForkedDaapdData class
                       Remove redundant get functions
                       Change some websocket handler log messages from error to warning
+v0.1.5, 2020-04-27 -- Add full_url method
+                      Add option for callback on websocket disconnection
