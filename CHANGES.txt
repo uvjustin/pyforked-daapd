@@ -12,3 +12,5 @@ v0.1.4, 2020-04-23 -- Add test_connection function
                       Change some websocket handler log messages from error to warning
 v0.1.5, 2020-04-27 -- Add full_url method
                       Add option for callback on websocket disconnection
+v0.1.6, 2020-05-05 -- Fix conversion of bool params
+                      Add get_pipes and get_playlists

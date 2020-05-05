@@ -1,5 +1,5 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 import asyncio
 import concurrent
 import logging
@@ -77,7 +77,28 @@ class ForkedDaapdAPI:
         _LOGGER.debug(
             "PUT request to %s with params %s, json payload %s.", url, params, json
         )
+        if params:  # convert bool to text
+            params = {
+                key: str(value).lower() if isinstance(value, bool) else value
+                for key, value in params.items()
+            }
         response = await self._websession.put(
+            url=url, params=params, json=json, auth=self._auth
+        )
+        return response.status
+
+    async def post_request(self, endpoint, params=None, json=None) -> int:
+        """Post request to endpoint."""
+        url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
+        _LOGGER.debug(
+            "POST request to %s with params %s, data payload %s.", url, params, json
+        )
+        if params:  # convert bool to text
+            params = {
+                key: str(value).lower() if isinstance(value, bool) else value
+                for key, value in params.items()
+            }
+        response = await self._websession.post(
             url=url, params=params, json=json, auth=self._auth
         )
         return response.status
@@ -181,8 +202,7 @@ class ForkedDaapdAPI:
     async def shuffle(self, shuffle) -> int:
         """Shuffle."""
         status = await self.put_request(
-            endpoint=f"player/shuffle",
-            params={"state": str(shuffle)},  # aiohttp bool params treated differently
+            endpoint=f"player/shuffle", params={"state": shuffle},
         )
         if status != 204:
             _LOGGER.debug("Unable to set shuffle to %s.", shuffle)
@@ -228,17 +248,6 @@ class ForkedDaapdAPI:
             )
         return status
 
-    async def post_request(self, endpoint, params=None, json=None) -> int:
-        """Post request to endpoint."""
-        url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
-        _LOGGER.debug(
-            "POST request to %s with params %s, data payload %s.", url, params, json
-        )
-        response = await self._websession.post(
-            url=url, params=params, json=json, auth=self._auth
-        )
-        return response.status
-
     async def add_to_queue(self, uris=None, expression=None, **kwargs) -> int:
         """Add item to queue."""
         if not (uris or expression):
@@ -253,13 +262,9 @@ class ForkedDaapdAPI:
             "playback_from_position",
             "clear",
             "shuffle",
-        ]:  # clear doesn't seem to work
+        ]:
             if field in kwargs:
-                params[field] = (
-                    kwargs[field]
-                    if isinstance(kwargs[field], bool)
-                    else str(kwargs[field])
-                )  # aiohttp bool params treated differently
+                params[field] = kwargs[field]
         if "position" in kwargs:
             params["position"] = int(kwargs["position"])
         status = await self.post_request(endpoint=f"queue/items/add", params=params)
@@ -279,13 +284,22 @@ class ForkedDaapdAPI:
         creds = f"admin:{self._api_password}@" if self._api_password else ""
         return f"http://{creds}{self._ip_address}:{self._api_port}{url}"
 
+    async def get_pipes(self) -> []:
+        """Get list of pipes."""
+        return (
+            await self.get_request("search?type=tracks&expression=data_kind+is+pipe")
+        )["tracks"]["items"]
+
+    async def get_playlists(self) -> []:
+        """Get list of playlists."""
+        return (await self.get_request("library/playlists"))["items"]
+
     # not used by HA
 
     async def consume(self, consume) -> int:
         """Consume."""
         status = await self.put_request(
-            endpoint=f"player/consume",
-            params={"state": str(consume)},  # aiohttp bool params treated differently
+            endpoint=f"player/consume", params={"state": consume},
         )
         if status != 204:
             _LOGGER.debug("Unable to set consume to %s.", consume)
