@@ -14,3 +14,5 @@ v0.1.5, 2020-04-27 -- Add full_url method
                       Add option for callback on websocket disconnection
 v0.1.6, 2020-05-05 -- Fix conversion of bool params
                       Add get_pipes and get_playlists
+v0.1.7, 2020-05-11 -- Add hash function to get Machine ID
+                      Change test_connection function to return Machine ID on success

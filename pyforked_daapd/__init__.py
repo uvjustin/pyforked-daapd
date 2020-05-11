@@ -1,5 +1,5 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 import asyncio
 import concurrent
 import logging
@@ -27,6 +27,13 @@ class ForkedDaapdAPI:
     @staticmethod
     async def test_connection(websession, host, port, password):
         """Validate the user input."""
+
+        def djb_hash(string):
+            hashed = 5381
+            for character in string:
+                hashed = ((hashed << 5) + hashed) + ord(character)
+            return hex(hashed & 0xFFFFFFFF)[2:].upper().rjust(8, "0")
+
         try:
             url = f"http://{host}:{port}/api/config"
             auth = (
@@ -41,8 +48,8 @@ class ForkedDaapdAPI:
                 json = await resp.json()
                 # _LOGGER.debug("JSON %s", json)
                 if json["websocket_port"] == 0:
-                    return "websocket_not_enabled"
-                return "ok"
+                    return ["websocket_not_enabled"]
+                return ["ok", djb_hash(json["library_name"])]
         except (
             aiohttp.ClientConnectionError,
             asyncio.TimeoutError,
@@ -51,14 +58,14 @@ class ForkedDaapdAPI:
             # maybe related to https://github.com/aio-libs/aiohttp/issues/1207
             aiohttp.InvalidURL,
         ):
-            return "wrong_host_or_port"
+            return ["wrong_host_or_port"]
         except (aiohttp.ClientResponseError, KeyError):
             if resp.status == 401:
-                return "wrong_password"
-            return "wrong_server_type"
+                return ["wrong_password"]
+            return ["wrong_server_type"]
         finally:
             pass
-        return "unknown_error"
+        return ["unknown_error"]
 
     async def get_request(self, endpoint) -> dict:
         """Get request from endpoint."""
