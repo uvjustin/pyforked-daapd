@@ -1,5 +1,5 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.7"
+__version__ = "0.1.9"
 import asyncio
 import concurrent
 import logging
@@ -28,12 +28,6 @@ class ForkedDaapdAPI:
     async def test_connection(websession, host, port, password):
         """Validate the user input."""
 
-        def djb_hash(string):
-            hashed = 5381
-            for character in string:
-                hashed = ((hashed << 5) + hashed) + ord(character)
-            return hex(hashed & 0xFFFFFFFF)[2:].upper().rjust(8, "0")
-
         try:
             url = f"http://{host}:{port}/api/config"
             auth = (
@@ -49,7 +43,7 @@ class ForkedDaapdAPI:
                 # _LOGGER.debug("JSON %s", json)
                 if json["websocket_port"] == 0:
                     return ["websocket_not_enabled"]
-                return ["ok", djb_hash(json["library_name"])]
+                return ["ok", json["library_name"]]
         except (
             aiohttp.ClientConnectionError,
             asyncio.TimeoutError,
@@ -72,7 +66,7 @@ class ForkedDaapdAPI:
         url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
         try:
             async with self._websession.get(url=url, auth=self._auth) as resp:
-                json = await (resp.json())
+                json = await resp.json()
         except (asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error("Can not get %s", url)
             return None
@@ -155,35 +149,35 @@ class ForkedDaapdAPI:
 
     async def start_playback(self) -> int:
         """Start playback."""
-        status = await self.put_request(endpoint=f"player/play")
+        status = await self.put_request(endpoint="player/play")
         if status != 204:
             _LOGGER.debug("Unable to start playback.")
         return status
 
     async def pause_playback(self) -> int:
         """Pause playback."""
-        status = await self.put_request(endpoint=f"player/pause")
+        status = await self.put_request(endpoint="player/pause")
         if status != 204:
             _LOGGER.debug("Unable to pause playback.")
         return status
 
     async def stop_playback(self) -> int:
         """Stop playback."""
-        status = await self.put_request(endpoint=f"player/stop")
+        status = await self.put_request(endpoint="player/stop")
         if status != 204:
             _LOGGER.debug("Unable to stop playback.")
         return status
 
     async def previous_track(self) -> int:
         """Previous track."""
-        status = await self.put_request(endpoint=f"player/previous")
+        status = await self.put_request(endpoint="player/previous")
         if status != 204:
             _LOGGER.debug("Unable to skip to previous track.")
         return status
 
     async def next_track(self) -> int:
         """Next track."""
-        status = await self.put_request(endpoint=f"player/next")
+        status = await self.put_request(endpoint="player/next")
         if status != 204:
             _LOGGER.debug("Unable to skip to next track.")
         return status
@@ -197,7 +191,7 @@ class ForkedDaapdAPI:
         else:
             _LOGGER.error("seek needs either position_ms or seek_ms")
             return -1
-        status = await self.put_request(endpoint=f"player/seek", params=params)
+        status = await self.put_request(endpoint="player/seek", params=params)
         if status != 204:
             _LOGGER.debug(
                 "Unable to seek to %s of %s.",
@@ -209,7 +203,7 @@ class ForkedDaapdAPI:
     async def shuffle(self, shuffle) -> int:
         """Shuffle."""
         status = await self.put_request(
-            endpoint=f"player/shuffle", params={"state": shuffle},
+            endpoint="player/shuffle", params={"state": shuffle},
         )
         if status != 204:
             _LOGGER.debug("Unable to set shuffle to %s.", shuffle)
@@ -218,7 +212,7 @@ class ForkedDaapdAPI:
     async def set_enabled_outputs(self, output_ids) -> int:
         """Set enabled outputs."""
         status = await self.put_request(
-            endpoint=f"outputs/set", json={"outputs": output_ids}
+            endpoint="outputs/set", json={"outputs": output_ids}
         )
         if status != 204:
             _LOGGER.debug("Unable to set enabled outputs for %s.", output_ids)
@@ -235,7 +229,7 @@ class ForkedDaapdAPI:
             return
         if "output_id" in kwargs:
             params = {**params, **{"output_id": kwargs["output_id"]}}
-        status = await self.put_request(endpoint=f"player/volume", params=params)
+        status = await self.put_request(endpoint="player/volume", params=params)
         if status != 204:
             _LOGGER.debug("Unable to set volume.")
         return status
@@ -274,14 +268,14 @@ class ForkedDaapdAPI:
                 params[field] = kwargs[field]
         if "position" in kwargs:
             params["position"] = int(kwargs["position"])
-        status = await self.post_request(endpoint=f"queue/items/add", params=params)
+        status = await self.post_request(endpoint="queue/items/add", params=params)
         if status != 200:
             _LOGGER.debug("%s: Unable to add items to queue.", status)
         return status
 
     async def clear_queue(self) -> int:
         """Clear queue."""
-        status = await self.put_request(endpoint=f"queue/clear")
+        status = await self.put_request(endpoint="queue/clear")
         if status != 204:
             _LOGGER.debug("%s: Unable to clear queue.", status)
         return status
@@ -293,20 +287,26 @@ class ForkedDaapdAPI:
 
     async def get_pipes(self) -> []:
         """Get list of pipes."""
-        return (
-            await self.get_request("search?type=tracks&expression=data_kind+is+pipe")
-        )["tracks"]["items"]
+        pipes = await self.get_request(
+            "search?type=tracks&expression=data_kind+is+pipe"
+        )
+        if pipes:
+            return pipes["tracks"]["items"]
+        return None
 
     async def get_playlists(self) -> []:
         """Get list of playlists."""
-        return (await self.get_request("library/playlists"))["items"]
+        playlists = await self.get_request("library/playlists")
+        if playlists:
+            return playlists["items"]
+        return None
 
     # not used by HA
 
     async def consume(self, consume) -> int:
         """Consume."""
         status = await self.put_request(
-            endpoint=f"player/consume", params={"state": consume},
+            endpoint="player/consume", params={"state": consume},
         )
         if status != 204:
             _LOGGER.debug("Unable to set consume to %s.", consume)
@@ -315,7 +315,7 @@ class ForkedDaapdAPI:
     async def repeat(self, repeat) -> int:
         """Repeat. Takes string argument of 'off','all', or 'single'."""
         status = await self.put_request(
-            endpoint=f"player/repeat", params={"state": repeat}
+            endpoint="player/repeat", params={"state": repeat}
         )
         if status != 204:
             _LOGGER.debug("Unable to set repeat to %s.", repeat)

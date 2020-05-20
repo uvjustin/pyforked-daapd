@@ -1,7 +1,7 @@
 pyforked-daapd Python Library
 ===============================
 
-version number: 0.1.7
+version number: 0.1.9
 author: Justin Wong
 
 Overview

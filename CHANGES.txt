@@ -16,3 +16,7 @@ v0.1.6, 2020-05-05 -- Fix conversion of bool params
                       Add get_pipes and get_playlists
 v0.1.7, 2020-05-11 -- Add hash function to get Machine ID
                       Change test_connection function to return Machine ID on success
+v0.1.8, 2020-05-12 -- Remove hash function to get Machine ID
+                      Change test connection function to return Machine Name on success
+v0.1.9, 2020-05-20 -- Add None response handling to get_pipes and get_playlists
+                      Convert f-strings with no placeholders to strings
