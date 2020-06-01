@@ -20,3 +20,4 @@ v0.1.8, 2020-05-12 -- Remove hash function to get Machine ID
                       Change test connection function to return Machine Name on success
 v0.1.9, 2020-05-20 -- Add None response handling to get_pipes and get_playlists
                       Convert f-strings with no placeholders to strings
+v0.1.10, 2020-06-01 -- Change full_url to handle absolute url inputs

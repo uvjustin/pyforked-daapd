@@ -1,8 +1,9 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 import asyncio
 import concurrent
 import logging
+from urllib.parse import urljoin
 
 import aiohttp
 
@@ -283,7 +284,7 @@ class ForkedDaapdAPI:
     def full_url(self, url):
         """Get full url (including basic auth) of urls such as artwork_url."""
         creds = f"admin:{self._api_password}@" if self._api_password else ""
-        return f"http://{creds}{self._ip_address}:{self._api_port}{url}"
+        return urljoin(f"http://{creds}{self._ip_address}:{self._api_port}", url)
 
     async def get_pipes(self) -> []:
         """Get list of pipes."""
