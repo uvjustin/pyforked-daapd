@@ -57,19 +57,24 @@ class ForkedDaapdAPI:
         except (aiohttp.ClientResponseError, KeyError):
             if resp.status == 401:
                 return ["wrong_password"]
+            if resp.status == 403:
+                return ["forbidden"]
             return ["wrong_server_type"]
         finally:
             pass
         return ["unknown_error"]
 
-    async def get_request(self, endpoint) -> dict:
+    async def get_request(self, endpoint, params=None) -> dict:
         """Get request from endpoint."""
         url = f"http://{self._ip_address}:{self._api_port}/api/{endpoint}"
+        # get params not working so add params ourselves
+        if params:
+            url += "?" + "&".join(f"{k}={v}" for k, v in params.items())
         try:
             async with self._websession.get(url=url, auth=self._auth) as resp:
                 json = await resp.json()
         except (asyncio.TimeoutError, aiohttp.ClientError):
-            _LOGGER.error("Can not get %s", url)
+            _LOGGER.error("Can not get %s with params %s", url, params)
             return None
         return json
 
@@ -286,21 +291,74 @@ class ForkedDaapdAPI:
         creds = f"admin:{self._api_password}@" if self._api_password else ""
         return urljoin(f"http://{creds}{self._ip_address}:{self._api_port}", url)
 
-    async def get_pipes(self) -> []:
+    async def get_pipes(self, **kwargs) -> []:
         """Get list of pipes."""
         pipes = await self.get_request(
-            "search?type=tracks&expression=data_kind+is+pipe"
+            "search",
+            params={"type": "tracks", "expression": "data_kind+is+pipe", **kwargs},
         )
         if pipes:
             return pipes["tracks"]["items"]
         return None
 
-    async def get_playlists(self) -> []:
+    async def get_playlists(self, **kwargs) -> []:
         """Get list of playlists."""
-        playlists = await self.get_request("library/playlists")
-        if playlists:
-            return playlists["items"]
-        return None
+        playlists = await self.get_request("library/playlists", params=kwargs)
+        return playlists.get("items")
+
+    async def get_artists(self, **kwargs) -> []:
+        """Get a list of artists."""
+        artists = await self.get_request("library/artists", params=kwargs)
+        return artists.get("items")
+
+    async def get_albums(self, artist_id=None, **kwargs) -> []:
+        """Get a list of albums."""
+        if artist_id:
+            albums = await self.get_request(
+                f"library/artists/{artist_id}/albums", params=kwargs
+            )
+        else:
+            albums = await self.get_request("library/albums", params=kwargs)
+        return albums.get("items")
+
+    async def get_genres(self, **kwargs) -> []:
+        """Get a list of genres in library."""
+        genres = await self.get_request("library/genres", params=kwargs)
+        return genres.get("items")
+
+    async def get_genre(self, genre, media_type=None, **kwargs) -> []:
+        """Get artists, albums, or tracks in a given genre."""
+        params = {
+            "expression": f'genre+is+"{genre}"',
+            "type": media_type or "artist,album,track",
+            **kwargs,
+        }
+        result = await self.get_request("search", params=params)
+        return [
+            item
+            for sublist in [items_by_type["items"] for items_by_type in result.values()]
+            for item in sublist
+        ]
+
+    async def get_directory(self, **kwargs) -> []:
+        """Get directory contents."""
+        return await self.get_request("library/files", params=kwargs)
+
+    async def get_tracks(self, album_id=None, playlist_id=None, **kwargs) -> []:
+        """Get a list of tracks from an album or playlist or by genre."""
+        item_id = album_id or playlist_id
+        if item_id is None:
+            return []
+        tracks = await self.get_request(
+            f"library/{'albums' if album_id else 'playlists'}/{item_id}/tracks",
+            params=kwargs,
+        )
+        return tracks.get("items")
+
+    async def get_track(self, track_id) -> {}:
+        """Get track."""
+        track = await self.get_request(f"library/tracks/{track_id}")
+        return track
 
     # not used by HA
 
