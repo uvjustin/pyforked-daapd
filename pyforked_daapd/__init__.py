@@ -1,5 +1,5 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 import asyncio
 import concurrent
 import logging
