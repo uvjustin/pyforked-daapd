@@ -24,3 +24,8 @@ v0.1.10, 2020-06-01 -- Change full_url to handle absolute url inputs
 v0.1.11, 2020-10-08 -- Add case for 403 error in test_connection
                        Add library browsing functions
                        Modify get_request to take params
+v0.1.12, 2022-09-05 -- Improve typing
+                       Add get_current_queue_item
+                       Change disconnected_callback to async
+                       Remove default types from get_genre
+                       Remove kwargs

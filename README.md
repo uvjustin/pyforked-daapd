@@ -1,13 +1,13 @@
 pyforked-daapd Python Library
 ===============================
 
-version number: 0.1.11
+version number: 0.1.12
 author: Justin Wong
 
 Overview
 --------
 
-A simple library to interface with a forked-daapd server.
+A simple library to interface with an Owntone server.
 
 Installation / Usage
 --------------------
