@@ -32,6 +32,8 @@ setup(
     description="Python Interface for forked-daapd",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
+    package_data={"pyforked_daapd": ["py.typed"]},
+    zip_safe=False,
     packages=["pyforked_daapd"],
     include_package_data=True,
     platforms="any",

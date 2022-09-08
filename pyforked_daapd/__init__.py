@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 
 import aiohttp
 
-__version__ = "0.1.12"
+__version__ = "0.1.13"
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -73,9 +73,6 @@ class ForkedDaapdAPI:
             if resp.status == 403:
                 return ["forbidden"]
             return ["wrong_server_type"]
-        finally:
-            pass
-        return ["unknown_error"]
 
     async def get_request(
         self, endpoint: str, params: Mapping[str, Any] | None = None
@@ -91,7 +88,7 @@ class ForkedDaapdAPI:
         except (asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error("Can not get %s with params %s", url, params)
             return None
-        return json
+        return cast(dict[str, Any], json) if json else None
 
     async def put_request(
         self,
@@ -341,20 +338,21 @@ class ForkedDaapdAPI:
             _LOGGER.debug("%s: Unable to clear queue.", status)
         return status
 
-    def full_url(self, url: str):
+    def full_url(self, url: str) -> str:
         """Get full url (including basic auth) of urls such as artwork_url."""
         creds = f"admin:{self._api_password}@" if self._api_password else ""
         return urljoin(f"http://{creds}{self._ip_address}:{self._api_port}", url)
 
     async def get_pipes(self) -> list[dict[str, int | str]] | None:
         """Get list of pipes."""
-        pipes = await self.get_request(
-            "search",
-            params={"type": "tracks", "expression": "data_kind+is+pipe"},
-        )
-        if pipes:
-            return pipes["tracks"]["items"]
-        return None
+        if not (
+            pipes := await self.get_request(
+                "search",
+                params={"type": "tracks", "expression": "data_kind+is+pipe"},
+            )
+        ):
+            return None
+        return cast(list[dict[str, int | str]], pipes["tracks"]["items"])
 
     async def get_playlists(self) -> list[dict[str, int | str]] | None:
         """Get list of playlists."""
@@ -402,7 +400,7 @@ class ForkedDaapdAPI:
             else None
         )
 
-    async def get_directory(self, path: str | None) -> dict[str, Any] | None:
+    async def get_directory(self, path: str | None = None) -> dict[str, Any] | None:
         """Get directory contents."""
         return await self.get_request(
             "library/files", params={"directory": path} if path else None
@@ -455,8 +453,11 @@ class ForkedDaapdAPI:
 
     async def get_current_queue_item(self) -> dict[str, int | str] | None:
         """Get the current queue item."""
-        queue = cast(
-            Mapping[str, Sequence] | None,
-            await self.get_request(endpoint="queue", params={"id": "now_playing"}),
-        )
-        return queue["items"][0] if queue and queue["items"] else None
+        if not (
+            queue := await self.get_request(
+                endpoint="queue", params={"id": "now_playing"}
+            )
+        ):
+            return None
+        queue = cast(dict[str, Sequence], queue)
+        return queue["items"][0] if queue["items"] else None
