@@ -1,6 +1,7 @@
 """This library wraps the forked-daapd API for use with Home Assistant."""
 from __future__ import annotations
 
+__version__ = "0.1.14"
 import asyncio
 import concurrent
 import logging
@@ -11,7 +12,6 @@ from urllib.parse import urljoin
 
 import aiohttp
 
-__version__ = "0.1.13"
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -400,14 +400,16 @@ class ForkedDaapdAPI:
             else None
         )
 
-    async def get_directory(self, path: str | None = None) -> dict[str, Any] | None:
+    async def get_directory(
+        self, directory: str | None = None
+    ) -> dict[str, Any] | None:
         """Get directory contents."""
         return await self.get_request(
-            "library/files", params={"directory": path} if path else None
+            "library/files", params={"directory": directory} if directory else None
         )
 
     async def get_tracks(
-        self, album_id: str | None = None, playlist_id: int | None = None
+        self, album_id: str | None = None, playlist_id: str | None = None
     ) -> list[dict[str, int | str]] | None:
         """Get a list of tracks from an album or playlist or by genre."""
         item_id = album_id or playlist_id

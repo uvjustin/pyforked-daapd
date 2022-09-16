@@ -31,3 +31,5 @@ v0.1.12, 2022-09-05 -- Improve typing
                        Remove kwargs
 v0.1.13, 2022-09-08 -- Fix typing
                        Add py.typed file for mypy
+v0.1.14, 2022-09-16 -- Rename get_directory arg to match original kwarg
+                       Update get_tracks playlist_id type
